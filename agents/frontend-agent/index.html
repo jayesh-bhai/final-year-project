@@ -1,15 +1,263 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>SentinelWeb Test</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SentinelWeb Frontend Agent Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .test-section {
+      margin: 20px 0;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 8px;
+      margin: 5px 0;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    #status {
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 4px;
+      background: #d4edda;
+      border: 1px solid #c3e6cb;
+      color: #155724;
+    }
+    .metrics {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+  </style>
 </head>
 <body>
-  <h1>Testing SentinelWeb Frontend Agent</h1>
-  <script type="module">
-    import SentinelWebFrontend from './src/index.js';
+  <div class="container">
+    <h1>🛡️ SentinelWeb Frontend Agent Test</h1>
+    <div id="status">SentinelWeb Agent is initializing...</div>
+    
+    <div class="test-section">
+      <h3>Agent Controls</h3>
+      <button onclick="startAgent()">Start Agent</button>
+      <button onclick="stopAgent()">Stop Agent</button>
+      <button onclick="collectData()">Collect Data Now</button>
+      <button onclick="resetData()">Reset Data</button>
+    </div>
 
-    const agent = new SentinelWebFrontend();
+    <div class="test-section">
+      <h3>User Behavior Tests</h3>
+      <p>Perform these actions to generate tracking data:</p>
+      <button onclick="simulateClicks()">Simulate Multiple Clicks</button>
+      <button onclick="scrollToBottom()">Scroll Test</button>
+      <input type="text" placeholder="Type here to generate keystrokes..." id="testInput">
+      <textarea placeholder="Enter some text to test form interactions..." rows="3"></textarea>
+    </div>
+
+    <div class="test-section">
+      <h3>Security Tests</h3>
+      <p>These inputs will trigger security monitoring:</p>
+      <input type="text" placeholder="Try: <script>alert('xss')</script>" id="xssTest">
+      <input type="text" placeholder="Try: ' OR 1=1--" id="sqlTest">
+      <input type="password" placeholder="Password field (excluded from tracking)">
+      <button onclick="submitTestForm()">Submit Test Form</button>
+    </div>
+
+    <div class="test-section">
+      <h3>Performance Tests</h3>
+      <button onclick="heavyComputation()">Heavy Computation Test</button>
+      <button onclick="loadLargeImage()">Load Large Resource</button>
+      <button onclick="triggerError()">Trigger JavaScript Error</button>
+    </div>
+
+    <div class="test-section">
+      <h3>Live Metrics</h3>
+      <button onclick="showMetrics()">Show Current Metrics</button>
+      <div id="metrics" class="metrics"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { SentinelWebFrontend } from './dist/index.js';
+    
+    // Initialize SentinelWeb with debug enabled
+    const config = {
+      apiEndpoint: 'http://localhost:5000/api/collect/frontend',
+      collectInterval: 10000, // 10 seconds for testing
+      debug: true,
+      enabledFeatures: {
+        domEvents: true,
+        performanceMonitoring: true,
+        userBehavior: true,
+        securityEvents: true,
+        errorTracking: true,
+        networkMonitoring: true
+      },
+      privacy: {
+        maskSensitiveData: true,
+        excludeSelectors: [
+          'input[type="password"]',
+          'input[name*="password"]',
+          '.sensitive-data'
+        ],
+        anonymizeIPs: true,
+        respectDoNotTrack: false // For testing purposes
+      }
+    };
+    
+    const agent = new SentinelWebFrontend(config);
+    window.sentinelAgent = agent;
+    
+    // Auto-start the agent
     agent.start();
+    
+    // Update status
+    document.getElementById('status').textContent = 
+      `SentinelWeb Agent started with session ID: ${agent.getSessionId()}`;
+    
+    </script>
+
+  <script>
+    // Global functions for testing (outside module scope)
+    window.startAgent = () => {
+      window.sentinelAgent.start();
+      console.log('Agent started manually');
+    };
+    
+    window.stopAgent = () => {
+      window.sentinelAgent.stop();
+      console.log('Agent stopped manually');
+    };
+    
+    window.collectData = () => {
+      const data = window.sentinelAgent.collectData();
+      console.log('Collected data:', data);
+      alert('Data collected! Check console for details.');
+    };
+    
+    window.resetData = () => {
+      window.sentinelAgent.reset();
+      console.log('Agent data reset');
+      document.getElementById('status').textContent = 
+        `SentinelWeb Agent reset with new session ID: ${window.sentinelAgent.getSessionId()}`;
+    };
+    
+    window.simulateClicks = (event) => {
+      const button = event.target;
+      let clicks = 0;
+      const interval = setInterval(() => {
+        clicks++;
+        button.textContent = `Simulated ${clicks} clicks`;
+        if (clicks >= 10) {
+          clearInterval(interval);
+          button.textContent = 'Simulate Multiple Clicks';
+        }
+      }, 100);
+    };
+    
+    window.scrollToBottom = () => {
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+      setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 2000);
+    };
+    
+    window.submitTestForm = () => {
+      // This will trigger security monitoring for form submission
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = '/test';
+      
+      const input = document.createElement('input');
+      input.name = 'test';
+      input.value = 'test data';
+      form.appendChild(input);
+      
+      document.body.appendChild(form);
+      
+      // Simulate form submission (without actually submitting)
+      const event = new Event('submit', { bubbles: true, cancelable: true });
+      form.dispatchEvent(event);
+      
+      document.body.removeChild(form);
+      alert('Test form submission triggered!');
+    };
+    
+    window.heavyComputation = () => {
+      // Simulate heavy computation to trigger performance monitoring
+      const start = Date.now();
+      let result = 0;
+      for (let i = 0; i < 1000000; i++) {
+        result += Math.sqrt(i);
+      }
+      const duration = Date.now() - start;
+      alert(`Heavy computation completed in ${duration}ms`);
+    };
+    
+    window.loadLargeImage = () => {
+      const img = new Image();
+      img.onload = () => alert('Large image loaded (simulated)');
+      img.onerror = () => alert('Failed to load image (expected)');
+      // Use a non-existent large image to trigger network monitoring
+      img.src = 'https://httpbin.org/delay/2';
+    };
+    
+    window.triggerError = () => {
+      try {
+        // Intentionally trigger an error
+        nonExistentFunction();
+      } catch (error) {
+        console.error('Intentional error for testing:', error);
+        alert('JavaScript error triggered! Check console.');
+      }
+    };
+    
+    window.showMetrics = () => {
+      const metrics = window.sentinelAgent.collectData();
+      const metricsDiv = document.getElementById('metrics');
+      metricsDiv.textContent = JSON.stringify(metrics, null, 2);
+    };
+    
+    // Add some additional event listeners for testing
+    document.addEventListener('click', (e) => {
+      console.log('Click detected on:', e.target.tagName);
+    });
+    
+    document.addEventListener('input', (e) => {
+      if (e.target.id === 'xssTest' || e.target.id === 'sqlTest') {
+        console.log('Security test input detected:', e.target.value);
+      }
+    });
   </script>
 </body>
 </html>

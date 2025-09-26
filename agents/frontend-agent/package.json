@@ -1,13 +1,41 @@
 {
-  "name": "frontend-agent",
+  "name": "@sentinelweb/frontend-agent",
   "version": "1.0.0",
-  "main": "src/index.js",
+  "description": "SentinelWeb Frontend Agent for real-time user activity monitoring and security tracking",
+  "main": "dist/index.js",
+  "module": "src/index.js",
+  "types": "dist/index.d.ts",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "rollup -c",
+    "dev": "rollup -c -w",
+    "test": "jest",
+    "serve": "http-server . -p 8080"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": ""
+  "keywords": [
+    "security",
+    "monitoring",
+    "frontend",
+    "analytics",
+    "tracking"
+  ],
+  "author": "SentinelWeb Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^25.0.0",
+    "@rollup/plugin-node-resolve": "^15.0.0",
+    "@rollup/plugin-typescript": "^11.0.0",
+    "http-server": "^14.0.0",
+    "jest": "^29.0.0",
+    "rollup": "^3.0.0",
+    "typescript": "^5.0.0"
+  },
+  "files": [
+    "dist/",
+    "src/",
+    "README.md"
+  ],
+  "dependencies": {
+    "tslib": "^2.8.1"
+  }
 }
