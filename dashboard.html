@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SentinelWeb Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #4361ee;
+            --secondary: #3f37c9;
+            --success: #4cc9f0;
+            --danger: #f72585;
+            --warning: #f8961e;
+            --info: #4895ef;
+            --dark: #1d3557;
+            --light: #f8f9fa;
+            --gray: #6c757d;
+            --border-radius: 12px;
+            --box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a2a6c, #2a4d69, #4b86b4);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 25px;
+            background: rgba(29, 53, 87, 0.7);
+            border-radius: var(--border-radius);
+            backdrop-filter: blur(10px);
+            box-shadow: var(--box-shadow);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+            background: linear-gradient(to right, #4cc9f0, #f72585);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: var(--border-radius);
+            padding: 25px;
+            box-shadow: var(--box-shadow);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: var(--transition);
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .card-header i {
+            margin-right: 12px;
+            font-size: 1.5rem;
+            color: var(--success);
+        }
+
+        .card-header h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: var(--border-radius);
+            padding: 20px;
+            text-align: center;
+            box-shadow: var(--box-shadow);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stat-value {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin: 10px 0;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .chart-container {
+            height: 300px;
+            margin-top: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        select, button {
+            width: 100%;
+            padding: 14px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.1);
+            color: black;
+            font-size: 16px;
+            transition: var(--transition);
+        }
+
+        select:focus, button:focus {
+            outline: none;
+            border-color: var(--success);
+            box-shadow: 0 0 0 3px rgba(76, 201, 240, 0.3);
+        }
+
+        button {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        button i {
+            margin-right: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, var(--danger), #b5179e);
+        }
+
+        .result {
+            margin-top: 25px;
+            padding: 20px;
+            border-radius: var(--border-radius);
+            font-weight: 600;
+            text-align: center;
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .normal {
+            background: linear-gradient(135deg, rgba(76, 201, 240, 0.3), rgba(72, 149, 239, 0.3));
+            border: 1px solid rgba(76, 201, 240, 0.5);
+        }
+
+        .attack {
+            background: linear-gradient(135deg, rgba(247, 37, 133, 0.3), rgba(181, 23, 158, 0.3));
+            border: 1px solid rgba(247, 37, 133, 0.5);
+        }
+
+        .services {
+            display: flex;
+            justify-content: space-around;
+            margin: 25px 0;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .service {
+            background: rgba(255, 255, 255, 0.08);
+            padding: 20px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            text-align: center;
+            min-width: 200px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: var(--transition);
+        }
+
+        .service:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        .service i {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+            color: var(--success);
+        }
+
+        .service.running i {
+            color: #4cc9f0;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+
+        .service h3 {
+            margin-top: 0;
+            font-size: 1.3rem;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        .running {
+            background: rgba(76, 201, 240, 0.2);
+            color: #4cc9f0;
+            border: 1px solid rgba(76, 201, 240, 0.5);
+        }
+
+        .log-container {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: var(--border-radius);
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .log-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .log-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+
+        .clear-log {
+            background: rgba(247, 37, 133, 0.2);
+            border: 1px solid rgba(247, 37, 133, 0.5);
+            color: #f72585;
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .clear-log:hover {
+            background: rgba(247, 37, 133, 0.3);
+        }
+
+        .log {
+            background: rgba(0, 0, 0, 0.4);
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .log-entry {
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .log-entry:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .timestamp {
+            color: #a0aec0;
+            font-size: 0.8em;
+            margin-right: 10px;
+        }
+
+        .instructions {
+            background: rgba(72, 149, 239, 0.2);
+            border-left: 4px solid var(--info);
+            padding: 20px;
+            border-radius: 0 var(--border-radius) var(--border-radius) 0;
+            margin: 25px 0;
+        }
+
+        .instructions h3 {
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+        }
+
+        .instructions h3 i {
+            margin-right: 10px;
+        }
+
+        .instructions p {
+            margin: 10px 0;
+            line-height: 1.6;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats-container {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .services {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-shield-alt"></i> SentinelWeb Dashboard</h1>
+            <p class="subtitle">Advanced Real-time Web Application Security Monitoring</p>
+        </header>
+
+        <div class="stats-container">
+            <div class="stat-card">
+                <div class="stat-label">Total Requests</div>
+                <div class="stat-value" id="totalRequests">0</div>
+                <div class="stat-label">requests</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Attacks Detected</div>
+                <div class="stat-value" id="attacksDetected">0</div>
+                <div class="stat-label">threats</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Accuracy</div>
+                <div class="stat-value" id="accuracy">98%</div>
+                <div class="stat-label">confidence</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Uptime</div>
+                <div class="stat-value" id="uptime">100%</div>
+                <div class="stat-label">availability</div>
+            </div>
+        </div>
+
+        <div class="services">
+            <div class="service running">
+                <i class="fas fa-brain"></i>
+                <h3>ML Service</h3>
+                <p>Port: 6000</p>
+                <span class="status running">Running</span>
+            </div>
+            <div class="service running">
+                <i class="fas fa-database"></i>
+                <h3>Collector API</h3>
+                <p>Port: 5000</p>
+                <span class="status running">Running</span>
+            </div>
+            <div class="service running">
+                <i class="fas fa-desktop"></i>
+                <h3>Dashboard</h3>
+                <p>Port: 3001</p>
+                <span class="status running">Running</span>
+            </div>
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-chart-bar"></i>
+                    <h2>Attack Detection Overview</h2>
+                </div>
+                <div class="chart-container">
+                    <canvas id="attackChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-bolt"></i>
+                    <h2>Real-time Analysis</h2>
+                </div>
+                <div class="chart-container">
+                    <canvas id="realtimeChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-vial"></i>
+                    <h2>Test Security Analysis</h2>
+                </div>
+                <div class="form-group">
+                    <label for="sessionType"><i class="fas fa-user-circle"></i> Session Type</label>
+                    <select id="sessionType">
+                        <option value="normal">Normal User Session</option>
+                        <option value="attack">Simulated Attack</option>
+                    </select>
+                </div>
+                
+                <button id="sendFrontendData" class="btn-primary">
+                    <i class="fas fa-window-maximize"></i> Send Frontend Data
+                </button>
+                <button id="sendBackendData" class="btn-primary">
+                    <i class="fas fa-server"></i> Send Backend Data
+                </button>
+                
+                <div id="result" class="result"></div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-history"></i>
+                    <h2>System Logs</h2>
+                </div>
+                <div class="log-container">
+                    <div class="log-header">
+                        <div class="log-title">Activity Log</div>
+                        <button class="clear-log" id="clearLog">
+                            <i class="fas fa-trash"></i> Clear Log
+                        </button>
+                    </div>
+                    <div id="logContainer" class="log">
+                        <div class="log-entry">
+                            <span class="timestamp">[00:00:00]</span> System initialized and ready for testing
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="instructions">
+            <h3><i class="fas fa-info-circle"></i> How to Use This Dashboard</h3>
+            <p>1. Select a session type (Normal or Attack) from the dropdown menu</p>
+            <p>2. Click "Send Frontend Data" or "Send Backend Data" to simulate data collection</p>
+            <p>3. View the analysis results in the result box and observe real-time chart updates</p>
+            <p>4. Monitor system activity through the logs and statistical cards</p>
+        </div>
+    </div>
+
+    <script>
+        // Initialize charts
+        const attackCtx = document.getElementById('attackChart').getContext('2d');
+        const realtimeCtx = document.getElementById('realtimeChart').getContext('2d');
+
+        // Attack Detection Chart
+        const attackChart = new Chart(attackCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Normal', 'Attack'],
+                datasets: [{
+                    data: [85, 15],
+                    backgroundColor: [
+                        'rgba(76, 201, 240, 0.7)',
+                        'rgba(247, 37, 133, 0.7)'
+                    ],
+                    borderColor: [
+                        'rgba(76, 201, 240, 1)',
+                        'rgba(247, 37, 133, 1)'
+                    ],
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            color: '#fff',
+                            font: {
+                                size: 12
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Real-time Analysis Chart
+        const realtimeChart = new Chart(realtimeCtx, {
+            type: 'line',
+            data: {
+                labels: ['0s', '5s', '10s', '15s', '20s', '25s', '30s'],
+                datasets: [
+                    {
+                        label: 'Normal Traffic',
+                        data: [65, 59, 80, 81, 56, 55, 70],
+                        borderColor: 'rgba(76, 201, 240, 1)',
+                        backgroundColor: 'rgba(76, 201, 240, 0.2)',
+                        tension: 0.4,
+                        fill: true
+                    },
+                    {
+                        label: 'Suspicious Activity',
+                        data: [28, 48, 40, 19, 86, 27, 90],
+                        borderColor: 'rgba(247, 37, 133, 1)',
+                        backgroundColor: 'rgba(247, 37, 133, 0.2)',
+                        tension: 0.4,
+                        fill: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        ticks: {
+                            color: '#fff'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        ticks: {
+                            color: '#fff'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: '#fff',
+                            font: {
+                                size: 12
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Stats tracking
+        let totalRequests = 0;
+        let attacksDetected = 0;
+
+        // Add log entry function
+        function addLogEntry(message) {
+            const logContainer = document.getElementById('logContainer');
+            const now = new Date();
+            const timestamp = `[${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}]`;
+            
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            logEntry.innerHTML = `<span class="timestamp">${timestamp}</span> ${message}`;
+            
+            logContainer.insertBefore(logEntry, logContainer.firstChild);
+            // Keep only the last 30 log entries
+            if (logContainer.children.length > 30) {
+                logContainer.removeChild(logContainer.lastChild);
+            }
+        }
+
+        // Clear log function
+        document.getElementById('clearLog').addEventListener('click', function() {
+            const logContainer = document.getElementById('logContainer');
+            logContainer.innerHTML = '';
+            addLogEntry('Log cleared by user');
+        });
+
+        // Update stats display
+        function updateStats(isAttack) {
+            totalRequests++;
+            if (isAttack) attacksDetected++;
+            
+            document.getElementById('totalRequests').textContent = totalRequests;
+            document.getElementById('attacksDetected').textContent = attacksDetected;
+            
+            // Update attack chart
+            const normalCount = totalRequests - attacksDetected;
+            attackChart.data.datasets[0].data = [normalCount, attacksDetected];
+            attackChart.update();
+        }
+
+        // Generate test data based on session type
+        function generateTestData(type) {
+            if (type === 'normal') {
+                return {
+                    session_duration: Math.floor(Math.random() * 570) + 30, // 30-600
+                    page_navigation_rate: Math.floor(Math.random() * 5) + 1, // 1-5
+                    input_field_activity: Math.floor(Math.random() * 35) + 5, // 5-40
+                    mouse_click_frequency: Math.floor(Math.random() * 45) + 5, // 5-50
+                    suspicious_input_patterns: 0,
+                    form_submission_rate: Math.floor(Math.random() * 2), // 0-2
+                    csrf_token_presence: 1,
+                    unusual_headers: 0,
+                    client_error_rate: Math.floor(Math.random() * 4), // 0-4
+                    failed_login_attempts: Math.floor(Math.random() * 2), // 0-1
+                    unusual_sql_queries: 0,
+                    response_time: Math.floor(Math.random() * 700) + 100, // 100-800
+                    server_error_rate: Math.floor(Math.random() * 2), // 0-1
+                    request_rate: Math.floor(Math.random() * 40) + 10, // 10-50
+                    unusual_http_methods: 0,
+                    ip_reputation_score: Math.floor(Math.random() * 30) + 70, // 70-100
+                    brute_force_signatures: 0,
+                    suspicious_file_uploads: 0
+                };
+            } else {
+                return {
+                    session_duration: Math.floor(Math.random() * 49) + 1, // 1-50
+                    page_navigation_rate: Math.floor(Math.random() * 10) + 5, // 5-15
+                    input_field_activity: Math.floor(Math.random() * 5), // 0-5
+                    mouse_click_frequency: Math.floor(Math.random() * 10), // 0-10
+                    suspicious_input_patterns: 1,
+                    form_submission_rate: Math.floor(Math.random() * 7) + 3, // 3-10
+                    csrf_token_presence: 0,
+                    unusual_headers: 1,
+                    client_error_rate: Math.floor(Math.random() * 10) + 5, // 5-15
+                    failed_login_attempts: Math.floor(Math.random() * 7) + 3, // 3-10
+                    unusual_sql_queries: 1,
+                    response_time: Math.floor(Math.random() * 2200) + 800, // 800-3000
+                    server_error_rate: Math.floor(Math.random() * 10) + 5, // 5-15
+                    request_rate: Math.floor(Math.random() * 400) + 100, // 100-500
+                    unusual_http_methods: 1,
+                    ip_reputation_score: Math.floor(Math.random() * 50), // 0-50
+                    brute_force_signatures: 1,
+                    suspicious_file_uploads: 1
+                };
+            }
+        }
+
+        // Send data to frontend endpoint
+        document.getElementById('sendFrontendData').addEventListener('click', async function() {
+            const sessionType = document.getElementById('sessionType').value;
+            const testData = generateTestData(sessionType);
+            
+            addLogEntry(`Sending ${sessionType} frontend data to Collector API...`);
+            
+            try {
+                const response = await fetch('http://localhost:5000/api/collect/frontend', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(testData)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                const isAttack = result.analysis.is_attack === 1;
+                updateStats(isAttack);
+                
+                addLogEntry(`Frontend data sent successfully. Analysis: is_attack=${result.analysis.is_attack}, probability=${result.analysis.probability.toFixed(4)}`);
+                
+                const resultDiv = document.getElementById('result');
+                resultDiv.style.display = 'block';
+                
+                if (isAttack) {
+                    resultDiv.className = 'result attack';
+                    resultDiv.textContent = `🚨 ATTACK DETECTED! Probability: ${(result.analysis.probability * 100).toFixed(2)}%`;
+                } else {
+                    resultDiv.className = 'result normal';
+                    resultDiv.textContent = `✅ Normal Activity. Probability of attack: ${(result.analysis.probability * 100).toFixed(2)}%`;
+                }
+            } catch (error) {
+                addLogEntry(`Error sending frontend data: ${error.message}`);
+                console.error('Error:', error);
+                
+                const resultDiv = document.getElementById('result');
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result attack';
+                resultDiv.textContent = `❌ Connection Error: Could not reach Collector API`;
+            }
+        });
+
+        // Send data to backend endpoint
+        document.getElementById('sendBackendData').addEventListener('click', async function() {
+            const sessionType = document.getElementById('sessionType').value;
+            const testData = generateTestData(sessionType);
+            
+            addLogEntry(`Sending ${sessionType} backend data to Collector API...`);
+            
+            try {
+                const response = await fetch('http://localhost:5000/api/collect/backend', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(testData)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                const isAttack = result.analysis.is_attack === 1;
+                updateStats(isAttack);
+                
+                addLogEntry(`Backend data sent successfully. Analysis: is_attack=${result.analysis.is_attack}, probability=${result.analysis.probability.toFixed(4)}`);
+                
+                const resultDiv = document.getElementById('result');
+                resultDiv.style.display = 'block';
+                
+                if (isAttack) {
+                    resultDiv.className = 'result attack';
+                    resultDiv.textContent = `🚨 ATTACK DETECTED! Probability: ${(result.analysis.probability * 100).toFixed(2)}%`;
+                } else {
+                    resultDiv.className = 'result normal';
+                    resultDiv.textContent = `✅ Normal Activity. Probability of attack: ${(result.analysis.probability * 100).toFixed(2)}%`;
+                }
+            } catch (error) {
+                addLogEntry(`Error sending backend data: ${error.message}`);
+                console.error('Error:', error);
+                
+                const resultDiv = document.getElementById('result');
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result attack';
+                resultDiv.textContent = `❌ Connection Error: Could not reach Collector API`;
+            }
+        });
+
+        // Initial log entry
+        addLogEntry("Dashboard loaded and ready for testing. All services are running.");
+    </script>
+</body>
+</html>
