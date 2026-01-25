@@ -1,0 +1,91 @@
+[
+  {
+    "rule_id": "SQLI_001",
+    "severity": "HIGH",
+    "conditions": [
+      {
+        "field": "payloads",
+        "operator": "regex",
+        "value": "(union\\\\s+select|or\\\\s+1=1|drop\\\\s+table|exec\\\\s*\\()"
+      }
+    ],
+    "description": "Detects basic SQL injection patterns"
+  },
+  {
+    "rule_id": "SQLI_002",
+    "severity": "HIGH",
+    "conditions": [
+      {
+        "field": "request.query_params",
+        "operator": "regex",
+        "value": "(union\\\\s+select|or\\\\s+1=1|--|\\/\\*\\*\\/)"
+      }
+    ],
+    "description": "Detects SQL injection in query parameters"
+  },
+  {
+    "rule_id": "XSS_001",
+    "severity": "HIGH",
+    "conditions": [
+      {
+        "field": "payloads",
+        "operator": "regex",
+        "value": "(<script|javascript:|on\\\\w+\\\\s*=|<iframe|<object|<embed|<svg|<img[^>]*onload)"
+      }
+    ],
+    "description": "Detects basic XSS patterns"
+  },
+  {
+    "rule_id": "XSS_002",
+    "severity": "HIGH",
+    "conditions": [
+      {
+        "field": "request.query_params",
+        "operator": "regex",
+        "value": "(<script|javascript:|on\\\\w+\\\\s*=)"
+      }
+    ],
+    "description": "Detects XSS in query parameters"
+  },
+  {
+    "rule_id": "BRUTE_FORCE_001",
+    "severity": "MEDIUM",
+    "conditions": [
+      {
+        "field": "behavior.failed_auth_attempts",
+        "operator": ">",
+        "value": 5
+      }
+    ],
+    "description": "Detects multiple failed login attempts"
+  },
+  {
+    "rule_id": "RATE_ABUSE_001",
+    "severity": "MEDIUM",
+    "conditions": [
+      {
+        "field": "behavior.rate_violation_count",
+        "operator": ">",
+        "value": 3
+      }
+    ],
+    "description": "Detects excessive requests from single IP"
+  },
+  {
+    "rule_id": "SESSION_HIJACK_001",
+    "severity": "HIGH",
+    "conditions": [
+      {
+        "field": "behavior.interaction_rate",
+        "operator": ">",
+        "value": 100
+      },
+      {
+        "field": "behavior.idle_time",
+        "operator": "<",
+        "value": 1000
+      }
+    ],
+    "description": "Detects suspicious session behavior"
+  }
+]

@@ -1,7 +1,12 @@
 import express from 'express';
 import bodyParser from 'body-parser';
+import { DetectionEngine } from './detection-engine/index.js';
 
 const app = express();
+
+// Initialize the detection engine
+const detectionEngine = new DetectionEngine();
+await detectionEngine.initialize();
 
 // Statistics tracking
 const stats = {
@@ -86,13 +91,33 @@ app.get('/health', (req, res) => {
 });
 
 // Endpoint for frontend agent
-app.post("/api/collect/frontend", (req, res) => {
+app.post("/api/collect/frontend", async (req, res) => {
   // Update statistics
   stats.requests.frontend.count++;
   stats.requests.frontend.lastReceived = new Date().toISOString();
   stats.requests.total++;
   if (req.body.sessionId) {
     stats.agents.frontend.add(req.body.sessionId);
+  }
+  
+  // Process the event through the detection engine
+  try {
+    const threatAssessment = await detectionEngine.processEvent({
+      ...req.body,
+      event_type: 'FRONTEND_EVENT',
+      source: 'frontend_agent'
+    });
+    
+    // Log threat assessment if detected
+    if (threatAssessment.is_threat) {
+      console.log(`🚨 THREAT DETECTED [${threatAssessment.severity.toUpperCase()}]`);
+      console.log(`   Type: ${threatAssessment.threat_type}`);
+      console.log(`   Confidence: ${threatAssessment.confidence}`);
+      console.log(`   Explanation: ${threatAssessment.explanation}`);
+      console.log(`   Session: ${req.body.sessionId}`);
+    }
+  } catch (error) {
+    console.error('❌ Error processing event through detection engine:', error);
   }
   
   console.log("\n🔍 Frontend Agent Data Received:");
@@ -199,13 +224,33 @@ app.post("/api/collect/frontend", (req, res) => {
 });
 
 // Endpoint for backend agent
-app.post("/api/collect/backend", (req, res) => {
+app.post("/api/collect/backend", async (req, res) => {
   // Update statistics
   stats.requests.backend.count++;
   stats.requests.backend.lastReceived = new Date().toISOString();
   stats.requests.total++;
   if (req.body.serverId) {
     stats.agents.backend.add(req.body.serverId);
+  }
+  
+  // Process the event through the detection engine
+  try {
+    const threatAssessment = await detectionEngine.processEvent({
+      ...req.body,
+      event_type: 'BACKEND_EVENT',
+      source: 'backend_agent'
+    });
+    
+    // Log threat assessment if detected
+    if (threatAssessment.is_threat) {
+      console.log(`🚨 THREAT DETECTED [${threatAssessment.severity.toUpperCase()}]`);
+      console.log(`   Type: ${threatAssessment.threat_type}`);
+      console.log(`   Confidence: ${threatAssessment.confidence}`);
+      console.log(`   Explanation: ${threatAssessment.explanation}`);
+      console.log(`   Server: ${req.body.serverId}`);
+    }
+  } catch (error) {
+    console.error('❌ Error processing event through detection engine:', error);
   }
   
   console.log("\n🖥️  Backend Agent Data Received:");
