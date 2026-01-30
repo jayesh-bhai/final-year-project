@@ -1,4 +1,11 @@
 {
+  "name": "project-prototype",
+  "version": "1.0.0",
+  "scripts": {
+    "start:dashboard": "node dashboard-server.js",
+    "start:collector": "cd collector-api && npm start",
+    "start:backend-demo": "cd agents/backend-agent && npm run demo"
+  },
   "dependencies": {
     "express": "^5.1.0",
     "node-fetch": "^3.3.2"

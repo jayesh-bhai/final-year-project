@@ -7,9 +7,9 @@ const PORT = 3000;
 // Serve static files from the current directory
 app.use(express.static(__dirname));
 
-// Serve the dashboard.html file at the root route
+// Serve the index.html file at the root route
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dashboard.html'));
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 app.listen(PORT, () => {
