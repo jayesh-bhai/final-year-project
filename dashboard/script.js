@@ -10,12 +10,12 @@
                 datasets: [{
                     data: [85, 15],
                     backgroundColor: [
-                        'rgba(76, 201, 240, 0.7)',
-                        'rgba(247, 37, 133, 0.7)'
+                        'rgba(0, 255, 136, 0.6)',
+                        'rgba(255, 51, 102, 0.6)'
                     ],
                     borderColor: [
-                        'rgba(76, 201, 240, 1)',
-                        'rgba(247, 37, 133, 1)'
+                        'rgba(0, 255, 136, 1)',
+                        'rgba(255, 51, 102, 1)'
                     ],
                     borderWidth: 2
                 }]
@@ -27,7 +27,7 @@
                     legend: {
                         position: 'bottom',
                         labels: {
-                            color: '#fff',
+                            color: '#e6edf3',
                             font: {
                                 size: 12
                             }
@@ -46,16 +46,16 @@
                     {
                         label: 'Normal Traffic',
                         data: [65, 59, 80, 81, 56, 55, 70],
-                        borderColor: 'rgba(76, 201, 240, 1)',
-                        backgroundColor: 'rgba(76, 201, 240, 0.2)',
+                        borderColor: 'rgba(0, 255, 136, 1)',
+                        backgroundColor: 'rgba(0, 255, 136, 0.15)',
                         tension: 0.4,
                         fill: true
                     },
                     {
                         label: 'Suspicious Activity',
                         data: [28, 48, 40, 19, 86, 27, 90],
-                        borderColor: 'rgba(247, 37, 133, 1)',
-                        backgroundColor: 'rgba(247, 37, 133, 0.2)',
+                        borderColor: 'rgba(255, 51, 102, 1)',
+                        backgroundColor: 'rgba(255, 51, 102, 0.15)',
                         tension: 0.4,
                         fill: true
                     }
@@ -68,25 +68,25 @@
                     y: {
                         beginAtZero: true,
                         grid: {
-                            color: 'rgba(255, 255, 255, 0.1)'
+                            color: 'rgba(33, 38, 45, 1)'
                         },
                         ticks: {
-                            color: '#fff'
+                            color: '#8b949e'
                         }
                     },
                     x: {
                         grid: {
-                            color: 'rgba(255, 255, 255, 0.1)'
+                            color: 'rgba(33, 38, 45, 1)'
                         },
                         ticks: {
-                            color: '#fff'
+                            color: '#8b949e'
                         }
                     }
                 },
                 plugins: {
                     legend: {
                         labels: {
-                            color: '#fff',
+                            color: '#e6edf3',
                             font: {
                                 size: 12
                             }
