@@ -1,11 +1,3 @@
-/**
- * Rule Engine Module
- * Purpose: Execute rule-based detection on normalized events using declarative rules
- * Input: normalized event
- * Output: list of rule hits
- * No DB, No ML, No hardcoded thresholds
- */
-
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -13,244 +5,271 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export class RuleEngine {
-  constructor() {
-    this.rules = [];
+class RuleEngine {
+  constructor(rulesFilePath = path.join(__dirname, 'rules.json')) {
+    this.rules = this.loadRules(rulesFilePath);
+    this.compiledRegexes = new Map();
   }
 
   /**
-   * Initializes the rule engine by loading rules from JSON file
+   * Reloads rules from the file system.
+   * Useful for runtime updates without restarting the service.
    */
   async initialize() {
-    await this.loadRules();
+    this.rules = this.loadRules(path.join(__dirname, 'rules.json'));
+    this.compiledRegexes.clear(); // Clear cache on reload
+    return Promise.resolve();
+  }
+
+  getRules() {
+    return this.rules;
   }
 
   /**
-   * Loads rules from JSON file
+   * Wrapper for processEvent to maintain compatibility
    */
-  async loadRules() {
+  async runRuleEngine(event) {
+    return this.processEvent(event);
+  }
+
+  loadRules(filePath) {
     try {
-      const rulesPath = path.join(__dirname, 'rules.json');
-      const rulesData = fs.readFileSync(rulesPath, 'utf8');
-      this.rules = JSON.parse(rulesData);
-      
-      // Compile regex patterns for rules that use regex operators
-      this.rules = this.rules.map(rule => {
-        if (rule.conditions) {
-          rule.conditions = rule.conditions.map(condition => {
-            if (condition.operator === 'regex' && condition.value) {
-              // Create a RegExp object from the string pattern without global flag
-              try {
-                condition.compiled_regex = new RegExp(condition.value, 'i'); // Case insensitive, no global flag
-              } catch (e) {
-                console.error(`Invalid regex pattern in rule ${rule.rule_id}: ${condition.value}`);
-              }
-            }
-            return condition;
-          });
-        }
-        return rule;
-      });
-      
-      console.log(`📋 Loaded ${this.rules.length} rules from JSON file`);
+      if (!fs.existsSync(filePath)) {
+        console.warn(`Rules file not found at: ${filePath}`);
+        return [];
+      }
+      const rulesData = fs.readFileSync(filePath, 'utf8');
+      return JSON.parse(rulesData);
     } catch (error) {
-      console.error('❌ Error loading rules from JSON file:', error);
-      
-      // Fallback to basic rules if JSON loading fails
-      this.rules = [
-        {
-          rule_id: 'SQLI_001',
-          severity: 'HIGH',
-          conditions: [
-            {
-              field: 'payloads',
-              operator: 'regex',
-              value: '(?i)(union\\\\s+select|or\\\\s+1=1|drop\\\\s+table|exec\\\\s*\\()'
-            }
-          ]
-        },
-        {
-          rule_id: 'XSS_001', 
-          severity: 'HIGH',
-          conditions: [
-            {
-              field: 'payloads',
-              operator: 'regex',
-              value: '(?i)(<script|javascript:|on\\\\w+\\\\s*=)'
-            }
-          ]
-        },
-        {
-          rule_id: 'BRUTE_FORCE_001',
-          severity: 'MEDIUM',
-          conditions: [
-            {
-              field: 'behavior.failed_auth_attempts',
-              operator: '>',
-              value: 5
-            }
-          ]
-        }
-      ];
-      
-      console.log('📋 Loaded fallback rules');
+      console.error(`Error loading rules from ${filePath}:`, error.message);
+      return [];
     }
   }
 
   /**
-   * Executes rule-based detection on a normalized event using declarative rules
-   * @param {Object} normalizedEvent - Normalized event to analyze (canonical schema)
-   * @returns {Array} Array of rule hits
+   * Resolves a value from a nested object using dot notation.
+   * Returns undefined only if the path does not exist.
+   * @param {Object} obj - The event object
+   * @param {string} fieldPath - Dot notation path (e.g., "behavior.failed_auth_attempts")
    */
-  async runRuleEngine(normalizedEvent) {
-    const ruleHits = [];
+  getFieldValue(obj, fieldPath) {
+    if (!fieldPath || typeof fieldPath !== 'string') return undefined;
+    
+    const parts = fieldPath.split('.');
+    let current = obj;
 
-    for (const rule of this.rules) {
-      try {
-        // Evaluate all conditions for this rule
-        let allConditionsMet = true;
-        const evidence = [];
+    for (const part of parts) {
+      if (current === null || current === undefined) {
+        return undefined;
+      }
+      current = current[part];
+    }
 
-        for (const condition of rule.conditions || []) {
-          const fieldValue = this.getFieldValue(normalizedEvent, condition.field);
-          
-          if (this.evaluateCondition(fieldValue, condition)) {
-            // Add evidence for this condition match
-            evidence.push({
-              field: condition.field,
-              value: fieldValue,
-              operator: condition.operator,
-              expected: condition.value
-            });
-          } else {
-            // If any condition fails, the whole rule fails
-            allConditionsMet = false;
-            break;
+    return current;
+  }
+
+  /**
+   * Compiles and caches regex patterns.
+   * Enforces 'i' flag (case-insensitive) and prohibits 'g' flag per requirements.
+   */
+  compileRegex(pattern) {
+    if (this.compiledRegexes.has(pattern)) {
+      return this.compiledRegexes.get(pattern);
+    }
+
+    try {
+      const regex = new RegExp(pattern, 'i');
+      this.compiledRegexes.set(pattern, regex);
+      return regex;
+    } catch (e) {
+      console.error(`Invalid regex pattern: ${pattern}`, e);
+      return null;
+    }
+  }
+
+  /**
+   * Evaluates a single condition against the event data.
+   * @returns {Object} { matched: boolean, matchedValue: any }
+   */
+  evaluateCondition(condition, event) {
+    const { field, operator } = condition;
+    // Support both 'expected' (standard) and 'value' (legacy) keys
+    const expected = condition.expected !== undefined ? condition.expected : condition.value;
+
+    const fieldValue = this.getFieldValue(event, field);
+
+    // If field is missing entirely, condition fails immediately
+    if (fieldValue === undefined) {
+      return { matched: false };
+    }
+
+    // Normalize operator
+    const normalizedOperator = operator ? operator.toLowerCase() : '';
+    switch (normalizedOperator) {
+      case 'equals':
+      case 'eq':
+        return {
+          matched: fieldValue === expected,
+          matchedValue: fieldValue
+        };
+
+      case 'contains':
+        // Case-insensitive string inclusion
+        if (typeof fieldValue === 'string' && typeof expected === 'string') {
+          return {
+            matched: fieldValue.toLowerCase().includes(expected.toLowerCase()),
+            matchedValue: fieldValue
+          };
+        }
+        // Array handling
+        if (Array.isArray(fieldValue)) {
+          for (const item of fieldValue) {
+            // Check strings directly
+            if (typeof item === 'string' && item.toLowerCase().includes(String(expected).toLowerCase())) {
+              return { matched: true, matchedValue: item };
+            }
+            // Check object .value property
+            if (item && typeof item === 'object' && item.value && typeof item.value === 'string') {
+               if (item.value.toLowerCase().includes(String(expected).toLowerCase())) {
+                 return { matched: true, matchedValue: item.value };
+               }
+            }
           }
         }
+        return { matched: false };
 
-        // If all conditions are met, add the rule hit
-        if (allConditionsMet && evidence.length > 0) {
-          ruleHits.push({
-            rule_id: rule.rule_id,
-            severity: rule.severity,
-            evidence: evidence,
-            timestamp: Date.now()
-          });
+      case 'regex':
+      case 'matches_regex':
+        if (typeof expected !== 'string') return { matched: false };
+        
+        const regex = this.compileRegex(expected);
+        if (!regex) return { matched: false };
+
+        // 1. Direct String Match
+        if (typeof fieldValue === 'string') {
+          if (regex.test(fieldValue)) {
+            return { matched: true, matchedValue: fieldValue };
+          }
         }
-      } catch (error) {
-        console.error(`Error evaluating rule ${rule.rule_id}:`, error);
+        // 2. Array of Objects (e.g., Payloads) or Strings
+        else if (Array.isArray(fieldValue)) {
+          for (const item of fieldValue) {
+            // Priority: Check item.value (common in payload structures)
+            if (item && typeof item === 'object' && item.value && typeof item.value === 'string') {
+              if (regex.test(item.value)) {
+                return { matched: true, matchedValue: item.value };
+              }
+            }
+            // Fallback: Check if item itself is a string
+            else if (typeof item === 'string') {
+              if (regex.test(item)) {
+                return { matched: true, matchedValue: item };
+              }
+            }
+          }
+        }
+        // 3. Object (e.g., query_params) - Iterate values
+        else if (typeof fieldValue === 'object' && fieldValue !== null) {
+          for (const key of Object.keys(fieldValue)) {
+            const val = fieldValue[key];
+            if (typeof val === 'string' && regex.test(val)) {
+              return { matched: true, matchedValue: val };
+            }
+          }
+        }
+        return { matched: false };
+
+      case '>':
+      case 'greater_than': {
+        const val = Number(fieldValue);
+        const exp = Number(expected);
+        return {
+          matched: !isNaN(val) && !isNaN(exp) && val > exp,
+          matchedValue: fieldValue
+        };
+      }
+
+      case '<':
+      case 'less_than': {
+        const val = Number(fieldValue);
+        const exp = Number(expected);
+        return {
+          matched: !isNaN(val) && !isNaN(exp) && val < exp,
+          matchedValue: fieldValue
+        };
+      }
+
+      case 'in_list':
+        if (Array.isArray(expected)) {
+          return {
+            matched: expected.includes(fieldValue),
+            matchedValue: fieldValue
+          };
+        }
+        return { matched: false };
+
+      default:
+        // No silent failures for unknown operators
+        throw new Error(`Unknown operator in rule condition: ${operator}`);
+    }
+  }
+
+  /**
+   * Processes an event against all loaded rules.
+   * Returns a list of rule hits with structured evidence.
+   */
+  processEvent(event) {
+    const ruleHits = [];
+
+    if (!this.rules || !Array.isArray(this.rules)) {
+      return ruleHits;
+    }
+
+    for (const rule of this.rules) {
+      const evidence = [];
+      let allConditionsMet = true;
+
+      // Ensure conditions exist
+      if (!rule.conditions || !Array.isArray(rule.conditions)) {
+        continue;
+      }
+
+      for (const condition of rule.conditions) {
+        try {
+          const result = this.evaluateCondition(condition, event);
+
+          if (result.matched) {
+            // Push structured evidence as required
+            evidence.push({
+              field: condition.field,
+              operator: condition.operator,
+              expected: condition.expected !== undefined ? condition.expected : condition.value,
+              value: result.matchedValue
+            });
+          } else {
+            allConditionsMet = false;
+            break; // Logic AND: one failure invalidates the rule
+          }
+        } catch (error) {
+          console.error(`Error evaluating rule ${rule.rule_id}: ${error.message}`);
+          allConditionsMet = false;
+          break;
+        }
+      }
+
+      if (allConditionsMet && evidence.length > 0) {
+        ruleHits.push({
+          rule_id: rule.rule_id,
+          name: rule.name, // Pass through name if available
+          severity: rule.severity,
+          description: rule.description,
+          evidence: evidence
+        });
       }
     }
 
     return ruleHits;
   }
-
-  /**
-   * Gets the value of a field from the normalized event using dot notation
-   * @param {Object} obj - Object to get field value from
-   * @param {string} fieldPath - Field path in dot notation (e.g., 'behavior.failed_auth_attempts')
-   * @returns {*} Field value
-   */
-  getFieldValue(obj, fieldPath) {
-    const keys = fieldPath.split('.');
-    let value = obj;
-    
-    for (const key of keys) {
-      if (value === null || value === undefined) {
-        return undefined;
-      }
-      value = value[key];
-    }
-    
-    // Special handling for payloads array
-    if (fieldPath === 'payloads' && Array.isArray(value)) {
-      // Return all payload values as an array
-      return value;
-    }
-    
-    return value;
-  }
-
-  /**
-   * Evaluates a single condition against a field value
-   * @param {*} fieldValue - Value of the field being checked
-   * @param {Object} condition - Condition to evaluate
-   * @returns {boolean} True if condition is satisfied
-   */
-  evaluateCondition(fieldValue, condition) {
-    const operator = condition.operator;
-    const expectedValue = condition.value;
-
-    switch (operator) {
-      case '>':
-        return fieldValue !== undefined && fieldValue > expectedValue;
-      
-      case '<':
-        return fieldValue !== undefined && fieldValue < expectedValue;
-      
-      case '>=':
-        return fieldValue !== undefined && fieldValue >= expectedValue;
-      
-      case '<=':
-        return fieldValue !== undefined && fieldValue <= expectedValue;
-      
-      case '==':
-      case '=':
-        return fieldValue !== undefined && fieldValue == expectedValue;
-      
-      case '===':
-        return fieldValue !== undefined && fieldValue === expectedValue;
-      
-      case '!=':
-        return fieldValue !== undefined && fieldValue != expectedValue;
-      
-      case '!==':
-        return fieldValue !== undefined && fieldValue !== expectedValue;
-      
-      case 'contains':
-        if (Array.isArray(fieldValue)) {
-          return fieldValue.some(item => 
-            typeof item === 'object' && item.value && item.value.includes(expectedValue)
-          );
-        }
-        return fieldValue !== undefined && typeof fieldValue === 'string' && fieldValue.includes(expectedValue);
-      
-      case 'regex':
-        if (condition.compiled_regex) {
-          if (Array.isArray(fieldValue)) {
-            // For payloads array, check if any payload matches the regex
-            return fieldValue.some(payload => 
-              payload && payload.value && condition.compiled_regex.test(payload.value)
-            );
-          }
-          // For single values, test directly
-          return fieldValue !== undefined && condition.compiled_regex.test(String(fieldValue));
-        }
-        return false;
-      
-      case 'exists':
-        return fieldValue !== undefined && fieldValue !== null;
-      
-      case 'starts_with':
-        return fieldValue !== undefined && typeof fieldValue === 'string' && fieldValue.startsWith(expectedValue);
-      
-      case 'ends_with':
-        return fieldValue !== undefined && typeof fieldValue === 'string' && fieldValue.endsWith(expectedValue);
-      
-      default:
-        console.warn(`Unknown operator: ${operator}`);
-        return false;
-    }
-  }
-
-  /**
-   * Gets all loaded rules
-   * @returns {Array} Array of rules
-   */
-  getRules() {
-    return this.rules;
-  }
 }
 
-export default RuleEngine;
+export { RuleEngine };

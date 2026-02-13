@@ -1,15 +1,15 @@
 [
   {
-    "rule_id": "SQLI_001",
-    "severity": "HIGH",
-    "conditions": [
-      {
-        "field": "payloads",
-        "operator": "regex",
-        "value": "(union\\\\s+select|or\\\\s+1=1|drop\\\\s+table|exec\\\\s*\\()"
-      }
-    ],
-    "description": "Detects basic SQL injection patterns"
+      "rule_id": "SQLI_001",
+      "severity": "HIGH",
+      "conditions": [
+        {
+          "field": "payloads",
+          "operator": "regex",
+          "value": "('.*or\\s+1=1|or\\s+1=1\\s*--|--\\s*$|;\\s*drop\\s+table)"
+        }
+      ],
+      "description": "Detects specific SQL injection attack patterns (Tautologies & Chaining)"
   },
   {
     "rule_id": "SQLI_002",

@@ -21,24 +21,24 @@ export class EventAdapter {
    * @returns {Object} Normalized event object following canonical schema
    */
   normalizeEvent(rawEvent) {
-    // Convert raw event from either frontend or backend agent to canonical internal format
+    // Handle both raw agent events and canonical test events
     const normalized = {
-      event_type: rawEvent.event_type || 'unknown',
+      event_type: rawEvent.event_type || rawEvent.type || 'unknown',
       source: rawEvent.source || 'unknown',
       timestamp: rawEvent.timestamp || Date.now(),
 
       actor: {
-        ip: rawEvent.ip || rawEvent.ip_address || 'unknown',
-        user_id: rawEvent.userId || rawEvent.user_id || 'unknown',
-        session_id: rawEvent.sessionId || rawEvent.session_id || 'unknown'
+        ip: rawEvent.ip || rawEvent.ip_address || rawEvent.actor?.ip || 'unknown',
+        user_id: rawEvent.userId || rawEvent.user_id || rawEvent.actor?.user_id || 'unknown',
+        session_id: rawEvent.sessionId || rawEvent.session_id || rawEvent.actor?.session_id || 'unknown'
       },
 
       request: {
-        method: rawEvent.method || 'unknown',
-        path: this.extractPathFromUrl(rawEvent.url),
-        query_params: this.extractQueryParams(rawEvent.url),
+        method: rawEvent.request?.method || rawEvent.method || 'unknown',
+        path: this.extractPathFromUrl(rawEvent.request?.path || rawEvent.url || rawEvent.request?.url),
+        query_params: rawEvent.request?.query_params || rawEvent.query_params || this.extractQueryParams(rawEvent.url || rawEvent.request?.url),
         headers: this.extractHeaders(rawEvent),
-        body: this.extractBody(rawEvent)
+        body: rawEvent.request?.body || rawEvent.body || this.extractBody(rawEvent)
       },
 
       behavior: {
@@ -52,6 +52,15 @@ export class EventAdapter {
       payloads: this.extractAllPayloads(rawEvent)
     };
 
+    // Also handle direct behavior field from test events
+    if (rawEvent.behavior) {
+      normalized.behavior.failed_auth_attempts = rawEvent.behavior.failed_auth_attempts || normalized.behavior.failed_auth_attempts;
+      normalized.behavior.request_count = rawEvent.behavior.request_count || normalized.behavior.request_count;
+      normalized.behavior.rate_violation_count = rawEvent.behavior.rate_violation_count || normalized.behavior.rate_violation_count;
+      normalized.behavior.interaction_rate = rawEvent.behavior.interaction_rate || normalized.behavior.interaction_rate;
+      normalized.behavior.idle_time = rawEvent.behavior.idle_time || normalized.behavior.idle_time;
+    }
+
     return normalized;
   }
 
@@ -63,10 +72,10 @@ export class EventAdapter {
   extractPathFromUrl(url) {
     if (!url) return '';
     try {
-      const urlObj = new URL(url);
+      const urlObj = new URL(url.startsWith('http') ? url : `http://example.com${url.startsWith('/') ? url : '/' + url}`);
       return urlObj.pathname;
     } catch (e) {
-      return url;
+      return url || '';
     }
   }
 
@@ -78,7 +87,7 @@ export class EventAdapter {
   extractQueryParams(url) {
     if (!url) return {};
     try {
-      const urlObj = new URL(url);
+      const urlObj = new URL(url.startsWith('http') ? url : `http://example.com${url.startsWith('/') ? url : '/' + url}`);
       const params = {};
       for (const [key, value] of urlObj.searchParams) {
         params[key] = value;
@@ -97,9 +106,9 @@ export class EventAdapter {
   extractHeaders(rawEvent) {
     const headers = {};
     
-    // Extract User-Agent
-    if (rawEvent.userAgent || rawEvent.user_agent) {
-      headers['user-agent'] = rawEvent.userAgent || rawEvent.user_agent;
+    // Extract User-Agent from multiple possible locations
+    if (rawEvent.userAgent || rawEvent.user_agent || rawEvent.request?.headers?.['user-agent']) {
+      headers['user-agent'] = rawEvent.userAgent || rawEvent.user_agent || rawEvent.request?.headers?.['user-agent'];
     }
     
     // Extract Referer
@@ -107,9 +116,9 @@ export class EventAdapter {
       headers['referer'] = rawEvent.referer || rawEvent.referrer;
     }
     
-    // Extract any other header-like fields
-    if (rawEvent.headers && typeof rawEvent.headers === 'object') {
-      Object.assign(headers, rawEvent.headers);
+    // Extract from request headers if available
+    if (rawEvent.request?.headers && typeof rawEvent.request.headers === 'object') {
+      Object.assign(headers, rawEvent.request.headers);
     }
     
     return headers;
@@ -122,7 +131,7 @@ export class EventAdapter {
    */
   extractBody(rawEvent) {
     // Look for common body representations in raw event
-    return rawEvent.body || rawEvent.requestBody || rawEvent.formData || rawEvent.payload || null;
+    return rawEvent.request?.body || rawEvent.body || rawEvent.requestBody || rawEvent.formData || rawEvent.payload || null;
   }
 
   /**
@@ -137,6 +146,20 @@ export class EventAdapter {
     }
     if (rawEvent.auth_metrics) {
       return rawEvent.auth_metrics.failed_logins || 0;
+    }
+    if (rawEvent.behavior?.failed_auth_attempts !== undefined) {
+      return rawEvent.behavior.failed_auth_attempts;
+    }
+    if (rawEvent.behavior?.failedLogins !== undefined) {
+      return rawEvent.behavior.failedLogins;
+    }
+    if (rawEvent.behavior && typeof rawEvent.behavior === 'object') {
+      // Look for any property that sounds like failed auth attempts
+      for (const [key, value] of Object.entries(rawEvent.behavior)) {
+        if (key.toLowerCase().includes('failed') && key.toLowerCase().includes('auth')) {
+          return value;
+        }
+      }
     }
     if (rawEvent.securityEvents && Array.isArray(rawEvent.securityEvents)) {
       return rawEvent.securityEvents.filter(event => 
@@ -158,6 +181,9 @@ export class EventAdapter {
     if (rawEvent.api_metrics) {
       return rawEvent.api_metrics.total_requests || 0;
     }
+    if (rawEvent.behavior?.request_count !== undefined) {
+      return rawEvent.behavior.request_count;
+    }
     if (rawEvent.requestCount) {
       return rawEvent.requestCount || 0;
     }
@@ -175,6 +201,9 @@ export class EventAdapter {
     }
     if (rawEvent.api_metrics) {
       return rawEvent.api_metrics.rate_limit_hits || 0;
+    }
+    if (rawEvent.behavior?.rate_violation_count !== undefined) {
+      return rawEvent.behavior.rate_violation_count;
     }
     if (rawEvent.rateLimitHits) {
       return rawEvent.rateLimitHits || 0;
@@ -198,6 +227,9 @@ export class EventAdapter {
       const interactions = rawEvent.user_behavior.mouse_clicks || 0 + rawEvent.user_behavior.key_strokes || 0;
       return duration > 0 ? interactions / (duration / 1000) : 0;
     }
+    if (rawEvent.behavior?.interaction_rate !== undefined) {
+      return rawEvent.behavior.interaction_rate;
+    }
     return 0;
   }
 
@@ -213,6 +245,9 @@ export class EventAdapter {
     if (rawEvent.user_behavior && rawEvent.user_behavior.idle_time !== undefined) {
       return rawEvent.user_behavior.idle_time;
     }
+    if (rawEvent.behavior?.idle_time !== undefined) {
+      return rawEvent.behavior.idle_time;
+    }
     return 0;
   }
 
@@ -225,9 +260,18 @@ export class EventAdapter {
     const payloads = [];
 
     // Extract URL query parameters
+    if (rawEvent.request?.query_params) {
+      for (const [key, value] of Object.entries(rawEvent.request.query_params)) {
+        if (value && typeof value === 'string') {
+          payloads.push({ location: `request.query_params.${key}`, value: value });
+        }
+      }
+    }
+
+    // Extract from URL query params if they exist in the URL string
     if (rawEvent.url) {
       try {
-        const urlObj = new URL(rawEvent.url);
+        const urlObj = new URL(rawEvent.url.startsWith('http') ? rawEvent.url : `http://example.com${rawEvent.url.startsWith('/') ? rawEvent.url : '/' + rawEvent.url}`);
         for (const [key, value] of urlObj.searchParams) {
           if (value && typeof value === 'string') {
             payloads.push({ location: `query.${key}`, value: value });
@@ -239,8 +283,17 @@ export class EventAdapter {
     }
 
     // Extract request body
+    if (rawEvent.request?.body && typeof rawEvent.request.body === 'object') {
+      this.extractPayloadsFromObject(rawEvent.request.body, 'request.body', payloads);
+    } else if (rawEvent.request?.body && typeof rawEvent.request.body === 'string') {
+      payloads.push({ location: 'request.body', value: rawEvent.request.body });
+    }
+
+    // Extract from main body if available
     if (rawEvent.body && typeof rawEvent.body === 'object') {
       this.extractPayloadsFromObject(rawEvent.body, 'body', payloads);
+    } else if (rawEvent.body && typeof rawEvent.body === 'string') {
+      payloads.push({ location: 'body', value: rawEvent.body });
     }
 
     // Extract form data if present

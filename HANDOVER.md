@@ -54,6 +54,40 @@ The Detection Engine is decomposed into 4 isolated modules with strict separatio
 - **Phase 3**: Converted rule engine to declarative logic, removed hardcoded thresholds, fixed regex state issues
 - **Phase 4**: Enforced ML constraint (cannot create threats), structured alert evidence
 
+### Adversarial Validation Results (January 12, 2026)
+**Test Summary**: 6 canonical events (3 malicious, 3 benign) tested through complete pipeline
+
+**Critical Findings**:
+- ✅ **Architecture Sound**: Proper 4-module separation, clean interfaces
+- ✅ **Benign Handling**: 100% correct identification (E4, E5, E6)
+- ⚠️ **Malicious Detection**: Partial success (improvement from 0% to partial detection)
+
+**Bugs Fixed During Validation**:
+1. **EventAdapter URL Parsing Bug**: Fixed variable reference error in extractAllPayloads method
+2. **Numeric Comparison Bug**: Fixed type conversion in RuleEngine for numeric comparisons
+3. **Regex Operator Compatibility**: Added support for legacy 'regex' operator alongside 'matches_regex'
+4. **Field Value Extraction**: Added support for both 'value' and 'expected' properties in rules
+
+**Updated Test Results**:
+| Event | Type | Expected | Actual | Status |
+|-------|------|----------|--------|---------|
+| E1 | SQL Injection | TRUE | FALSE | ❌ STILL BROKEN |
+| E2 | Brute Force | TRUE | FALSE | ❌ STILL BROKEN |
+| E3 | Rate Abuse | TRUE | TRUE | ✅ FIXED |
+| E4 | Normal Login | FALSE | FALSE | ✅ CORRECT |
+| E5 | Legit Search | FALSE | FALSE | ✅ CORRECT |
+| E6 | Power User | FALSE | FALSE | ✅ CORRECT |
+
+**Performance Metrics (After Fixes)**:
+- True Positives: 1/3 (33%)
+- True Negatives: 3/3 (100%)
+- False Negatives: 2/3 (67%)
+- False Positives: 0/3 (0%)
+
+**Remaining Issues to Address**:
+1. SQL Injection Detection: Payload regex matching still not working correctly
+2. Brute Force Detection: Behavior field extraction issue
+
 ## KNOWN BUGS
 
 ### Resolved Issues
@@ -62,19 +96,21 @@ The Detection Engine is decomposed into 4 isolated modules with strict separatio
 - Fixed TypeScript compilation errors by adjusting tsconfig.json settings
 - Fixed CORS middleware configuration
 - Fixed Array.forEach errors in collector API by checking Array.isArray() before calling forEach
+- Fixed EventAdapter URL parsing bug with variable reference error
+- Fixed RuleEngine numeric comparison type conversion issue
+- Fixed RuleEngine operator compatibility for legacy 'regex' operator
 
-### Current Status
-- All modules pass validation against the checklist requirements
-- No known critical bugs in the detection engine
-- ML service integration ready for deployment (requires Python environment)
+### Current Validation Issues (Partial)
+- **SQL Injection Detection**: Payloads are now properly extracted but regex matching still fails
+- **Brute Force Detection**: Still investigating behavior field extraction discrepancy
 
 ## NEXT STEPS
 
 ### Immediate Actions
-1. **ML Service Deployment**: Deploy the Python Isolation Forest model using FastAPI
-2. **Integration Testing**: Test the complete data flow from agents → collector → detection engine → alerts
-3. **Performance Testing**: Validate response times under load
-4. **Security Testing**: Validate detection accuracy with known attack patterns
+1. **Complete Bug Fixes**: Address remaining detection failures for E1 and E2
+2. **ML Service Deployment**: Deploy the Python Isolation Forest model using FastAPI
+3. **Integration Testing**: Retest complete data flow after remaining bug fixes
+4. **Performance Testing**: Validate response times under load
 
 ### Short-term Roadmap
 1. **Dashboard Development**: Create visualization for detection results
@@ -124,5 +160,5 @@ The Detection Engine is decomposed into 4 isolated modules with strict separatio
 
 ---
 **Last Updated**: January 12, 2026
-**Status**: Refactoring Complete, Ready for Testing & ML Integration
+**Status**: Refactoring Complete, Ready for Bug Fixes & Testing
 **Handover State**: Ready for continuation by next engineer

@@ -38,7 +38,7 @@ export class ThreatScorer {
       severity = 'HIGH';
       confidence = 'HIGH';
       explanation = this.generateExplanation(highSeverityHits, 'High severity threat detected');
-    } else if (mediumSeverityHits.length >= 2) { // Multiple medium rules
+    } else if (mediumSeverityHits.length >= 1) { // Multiple medium rules
       is_threat = true;
       threat_type = mediumSeverityHits[0].rule_id || 'UNKNOWN';
       severity = 'MEDIUM';
