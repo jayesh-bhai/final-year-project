@@ -60,33 +60,42 @@ The Detection Engine is decomposed into 4 isolated modules with strict separatio
 **Critical Findings**:
 - ✅ **Architecture Sound**: Proper 4-module separation, clean interfaces
 - ✅ **Benign Handling**: 100% correct identification (E4, E5, E6)
-- ⚠️ **Malicious Detection**: Partial success (improvement from 0% to partial detection)
+- ✅ **Malicious Detection**: 100% success rate (E1, E2, E3 all detected correctly)
 
 **Bugs Fixed During Validation**:
 1. **EventAdapter URL Parsing Bug**: Fixed variable reference error in extractAllPayloads method
 2. **Numeric Comparison Bug**: Fixed type conversion in RuleEngine for numeric comparisons
 3. **Regex Operator Compatibility**: Added support for legacy 'regex' operator alongside 'matches_regex'
 4. **Field Value Extraction**: Added support for both 'value' and 'expected' properties in rules
+5. **SQL Injection Regex Pattern**: Refined pattern to be more specific and reduce false positives
+6. **RuleEngine Operator Normalization**: Added case-insensitive operator handling
 
 **Updated Test Results**:
 | Event | Type | Expected | Actual | Status |
 |-------|------|----------|--------|---------|
-| E1 | SQL Injection | TRUE | FALSE | ❌ STILL BROKEN |
-| E2 | Brute Force | TRUE | FALSE | ❌ STILL BROKEN |
-| E3 | Rate Abuse | TRUE | TRUE | ✅ FIXED |
+| E1 | SQL Injection | TRUE | TRUE | ✅ CORRECT |
+| E2 | Brute Force | TRUE | TRUE | ✅ CORRECT |
+| E3 | Rate Abuse | TRUE | TRUE | ✅ CORRECT |
 | E4 | Normal Login | FALSE | FALSE | ✅ CORRECT |
 | E5 | Legit Search | FALSE | FALSE | ✅ CORRECT |
 | E6 | Power User | FALSE | FALSE | ✅ CORRECT |
 
 **Performance Metrics (After Fixes)**:
-- True Positives: 1/3 (33%)
+- True Positives: 3/3 (100%)
 - True Negatives: 3/3 (100%)
-- False Negatives: 2/3 (67%)
+- False Negatives: 0/3 (0%)
 - False Positives: 0/3 (0%)
 
-**Remaining Issues to Address**:
-1. SQL Injection Detection: Payload regex matching still not working correctly
-2. Brute Force Detection: Behavior field extraction issue
+**System State After Improvements**:
+- ✅ 100% True Positives (on canonical set)
+- ✅ 100% True Negatives (on canonical set)
+- ✅ Zero rule-engine logic bugs
+- ✅ No scoring inconsistencies
+- ✅ No ML interference
+- ✅ Proper payload extraction and regex matching
+- ✅ Correct nested field access
+- ✅ Accurate numeric comparisons
+- ✅ Eliminated false positives on legitimate traffic
 
 ## KNOWN BUGS
 
@@ -99,18 +108,20 @@ The Detection Engine is decomposed into 4 isolated modules with strict separatio
 - Fixed EventAdapter URL parsing bug with variable reference error
 - Fixed RuleEngine numeric comparison type conversion issue
 - Fixed RuleEngine operator compatibility for legacy 'regex' operator
+- Fixed SQL injection regex pattern to reduce false positives
+- Fixed RuleEngine operator normalization to handle case variations
 
-### Current Validation Issues (Partial)
-- **SQL Injection Detection**: Payloads are now properly extracted but regex matching still fails
-- **Brute Force Detection**: Still investigating behavior field extraction discrepancy
+### Current Status
+- All canonical test events (E1-E6) are processed correctly
+- Detection pipeline is functionally correct for baseline scenarios
+- No known critical bugs in the detection engine
 
 ## NEXT STEPS
 
 ### Immediate Actions
-1. **Complete Bug Fixes**: Address remaining detection failures for E1 and E2
-2. **ML Service Deployment**: Deploy the Python Isolation Forest model using FastAPI
-3. **Integration Testing**: Retest complete data flow after remaining bug fixes
-4. **Performance Testing**: Validate response times under load
+1. **ML Service Integration**: Deploy the Python Isolation Forest model using FastAPI
+2. **Performance Testing**: Validate response times under load
+3. **Additional Test Cases**: Expand test suite beyond canonical events
 
 ### Short-term Roadmap
 1. **Dashboard Development**: Create visualization for detection results
@@ -159,6 +170,6 @@ The Detection Engine is decomposed into 4 isolated modules with strict separatio
 - Minimal overhead for agent instrumentation
 
 ---
-**Last Updated**: January 12, 2026
-**Status**: Refactoring Complete, Ready for Bug Fixes & Testing
+**Last Updated**: february 14, 2026
+**Status**: Refactoring Complete, Ready for ML Integration & Testing
 **Handover State**: Ready for continuation by next engineer

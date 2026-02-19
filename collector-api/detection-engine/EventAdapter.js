@@ -43,6 +43,7 @@ export class EventAdapter {
 
       behavior: {
         failed_auth_attempts: this.extractFailedAuthAttempts(rawEvent),
+        successful_auth_attempts: this.extractSuccessfulAuthAttempts(rawEvent),
         request_count: this.extractRequestCount(rawEvent),
         rate_violation_count: this.extractRateViolations(rawEvent),
         interaction_rate: this.extractInteractionRate(rawEvent),
@@ -54,14 +55,37 @@ export class EventAdapter {
 
     // Also handle direct behavior field from test events
     if (rawEvent.behavior) {
-      normalized.behavior.failed_auth_attempts = rawEvent.behavior.failed_auth_attempts || normalized.behavior.failed_auth_attempts;
-      normalized.behavior.request_count = rawEvent.behavior.request_count || normalized.behavior.request_count;
-      normalized.behavior.rate_violation_count = rawEvent.behavior.rate_violation_count || normalized.behavior.rate_violation_count;
-      normalized.behavior.interaction_rate = rawEvent.behavior.interaction_rate || normalized.behavior.interaction_rate;
-      normalized.behavior.idle_time = rawEvent.behavior.idle_time || normalized.behavior.idle_time;
+      normalized.behavior.failed_auth_attempts = rawEvent.behavior.failed_auth_attempts !== undefined ? rawEvent.behavior.failed_auth_attempts : normalized.behavior.failed_auth_attempts;
+      normalized.behavior.successful_auth_attempts = rawEvent.behavior.successful_auth_attempts !== undefined ? rawEvent.behavior.successful_auth_attempts : normalized.behavior.successful_auth_attempts;
+      normalized.behavior.request_count = rawEvent.behavior.request_count !== undefined ? rawEvent.behavior.request_count : normalized.behavior.request_count;
+      normalized.behavior.rate_violation_count = rawEvent.behavior.rate_violation_count !== undefined ? rawEvent.behavior.rate_violation_count : normalized.behavior.rate_violation_count;
+      normalized.behavior.interaction_rate = rawEvent.behavior.interaction_rate !== undefined ? rawEvent.behavior.interaction_rate : normalized.behavior.interaction_rate;
+      normalized.behavior.idle_time = rawEvent.behavior.idle_time !== undefined ? rawEvent.behavior.idle_time : normalized.behavior.idle_time;
     }
 
     return normalized;
+  }
+
+  /**
+   * Extracts successful auth attempts from raw event
+   * @param {Object} rawEvent - Raw event object
+   * @returns {number} Count of successful auth attempts
+   */
+  extractSuccessfulAuthAttempts(rawEvent) {
+    // Check for authentication metrics in various formats
+    if (rawEvent.authenticationMetrics) {
+      return rawEvent.authenticationMetrics.successfulLogins || 0;
+    }
+    if (rawEvent.auth_metrics) {
+      return rawEvent.auth_metrics.successful_logins || 0;
+    }
+    if (rawEvent.behavior?.successful_auth_attempts !== undefined) {
+      return rawEvent.behavior.successful_auth_attempts;
+    }
+    if (rawEvent.behavior?.successfulLogins !== undefined) {
+      return rawEvent.behavior.successfulLogins;
+    }
+    return 0;
   }
 
   /**

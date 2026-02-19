@@ -1,16 +1,20 @@
 [
-  {
-      "rule_id": "SQLI_001",
-      "severity": "HIGH",
-      "conditions": [
-        {
-          "field": "payloads",
-          "operator": "regex",
-          "value": "('.*or\\s+1=1|or\\s+1=1\\s*--|--\\s*$|;\\s*drop\\s+table)"
-        }
-      ],
-      "description": "Detects specific SQL injection attack patterns (Tautologies & Chaining)"
-  },
+{
+  "rule_id": "SQLI_001",
+  "severity": "HIGH",
+  "conditions": [
+    {
+      "field": "payloads",
+      "operator": "regex",
+      "value": "('.*or\\s+1=1|or\\s+1=1\\s*--|;\\s*drop\\s+table)"
+    },
+    {
+      "field": "request.method",
+      "operator": "equals",
+      "value": "POST"
+    }
+  ]
+},
   {
     "rule_id": "SQLI_002",
     "severity": "HIGH",
@@ -18,10 +22,15 @@
       {
         "field": "request.query_params",
         "operator": "regex",
-        "value": "(union\\\\s+select|or\\\\s+1=1|--|\\/\\*\\*\\/)"
+        "value": "(or\\s+1=1\\s*--|--\\s*$|/\\*\\*/)"
+      },
+      {
+        "field": "request.method",
+        "operator": "equals",
+        "value": "POST"
       }
     ],
-    "description": "Detects SQL injection in query parameters"
+    "description": "Detects SQL injection in query parameters with contextual validation"
   },
   {
     "rule_id": "XSS_001",
@@ -47,30 +56,38 @@
     ],
     "description": "Detects XSS in query parameters"
   },
-  {
-    "rule_id": "BRUTE_FORCE_001",
-    "severity": "MEDIUM",
-    "conditions": [
-      {
-        "field": "behavior.failed_auth_attempts",
-        "operator": ">",
-        "value": 5
-      }
-    ],
-    "description": "Detects multiple failed login attempts"
-  },
-  {
-    "rule_id": "RATE_ABUSE_001",
-    "severity": "MEDIUM",
-    "conditions": [
-      {
-        "field": "behavior.rate_violation_count",
-        "operator": ">",
-        "value": 3
-      }
-    ],
-    "description": "Detects excessive requests from single IP"
-  },
+{
+  "rule_id": "BRUTE_FORCE_001",
+  "severity": "MEDIUM",
+  "conditions": [
+    {
+      "field": "behavior.failed_auth_attempts",
+      "operator": ">",
+      "value": 5
+    },
+    {
+      "field": "behavior.successful_auth_attempts",
+      "operator": "equals",
+      "value": 0
+    }
+  ]
+},
+{
+  "rule_id": "RATE_ABUSE_001",
+  "severity": "MEDIUM",
+  "conditions": [
+    {
+      "field": "behavior.rate_violation_count",
+      "operator": ">",
+      "value": 3
+    },
+    {
+      "field": "behavior.request_count",
+      "operator": ">",
+      "value": 50
+    }
+  ]
+},
   {
     "rule_id": "SESSION_HIJACK_001",
     "severity": "HIGH",

@@ -95,9 +95,23 @@ async function runValidationTests() {
   };
 
   // Test each event individually
-  for (const [eventId, event] of Object.entries(testEvents)) {
+  const eventIds = ['E1', 'E2', 'E3', 'E4', 'E5', 'E6'];
+  
+  for (const eventId of eventIds) {
+    const event = testEvents[eventId];
+    if (!event) {
+      console.log(`\n❌ MISSING EVENT ${eventId}`);
+      continue;
+    }
+    
     console.log(`\n🔬 TESTING EVENT ${eventId}`);
     console.log(`=========================================`);
+    
+    // Special debugging for E2
+    if (eventId === 'E2') {
+      console.log('🔍 SPECIAL DEBUG FOR E2:');
+      console.log('Raw E2 event:', JSON.stringify(event, null, 2));
+    }
 
     try {
       console.log('\n📥 Raw Input Event:');
@@ -152,10 +166,10 @@ async function runValidationTests() {
       }
 
       console.log('\n📋 SUMMARY FOR EVENT ' + eventId + ':');
-      console.log(`   - Input: ${eventId} (${eventId.startsWith('E1') || eventId.startsWith('E2') || eventId.startsWith('E3') ? 'malicious' : 'benign'})`);
+      console.log(`   - Input: ${eventId} (${['E1', 'E2', 'E3'].includes(eventId) ? 'malicious' : 'benign'})`);
       console.log(`   - Threat Detected: ${result.is_threat}`);
-      console.log(`   - Result: ${result.is_threat ? (eventId.startsWith('E1') || eventId.startsWith('E2') || eventId.startsWith('E3') ? '✅ CORRECT (malicious event flagged)' : '❌ INCORRECT (false positive)') : 
-                                (eventId.startsWith('E1') || eventId.startsWith('E2') || eventId.startsWith('E3') ? '❌ INCORRECT (missed threat)' : '✅ CORRECT (benign event passed)')}`);
+      console.log(`   - Result: ${result.is_threat ? (['E1', 'E2', 'E3'].includes(eventId) ? '✅ CORRECT (malicious event flagged)' : '❌ INCORRECT (false positive)') : 
+                                (['E1', 'E2', 'E3'].includes(eventId) ? '❌ INCORRECT (missed threat)' : '✅ CORRECT (benign event passed)')}`);
 
     } catch (error) {
       console.log(`\n❌ ERROR PROCESSING EVENT ${eventId}:`, error.message);
