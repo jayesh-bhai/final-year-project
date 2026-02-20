@@ -6,6 +6,7 @@ import { EventAdapter } from './EventAdapter.js';
 import { RuleEngine } from './RuleEngine.js';
 import { ThreatScorer } from './ThreatScorer.js';
 import { Persistence } from './Persistence.js';
+import { StateManager } from './StateManager.js';
 
 export class DetectionEngine {
   constructor() {
@@ -13,6 +14,8 @@ export class DetectionEngine {
     this.ruleEngine = new RuleEngine();
     this.threatScorer = new ThreatScorer();
     this.persistence = new Persistence();
+    this.stateManager = new StateManager();
+
   }
 
   async initialize() {
@@ -44,6 +47,12 @@ export class DetectionEngine {
       // Run rule-based detection
       const ruleHits = await this.ruleEngine.runRuleEngine(normalizedEvent);
 
+      const statefulHit = this.stateManager.recordEvent(normalizedEvent);
+
+      if (statefulHit) {
+        ruleHits.push(statefulHit);
+      }
+      
       // Run threat scoring
       const threatAssessment = await this.threatScorer.runThreatScoring(ruleHits, normalizedEvent);
 

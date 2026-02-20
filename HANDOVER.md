@@ -47,12 +47,23 @@ The Detection Engine is decomposed into 4 isolated modules with strict separatio
 - ✅ SQLite persistence for raw events and alerts
 - ✅ Canonical internal event schema enforcement
 - ✅ Structured alert generation with evidence-based explanations
+- ✅ Stateful behavioral analysis with time-windowed threat detection
+- ✅ Success reset mechanisms and cooldown protection
 
 ### Refactoring Achievements
 - **Phase 1**: Separated responsibilities into 4 distinct modules
 - **Phase 2**: Implemented canonical internal event schema, eliminated agent-specific concepts
 - **Phase 3**: Converted rule engine to declarative logic, removed hardcoded thresholds, fixed regex state issues
 - **Phase 4**: Enforced ML constraint (cannot create threats), structured alert evidence
+- **Phase 5**: Added stateful behavioral intelligence with temporal awareness
+
+### Stateful Behavioral Analysis Implementation
+- **Temporal Windowing**: 60-second sliding window for counting recent failures
+- **Dual-Level Tracking**: Independent failure counts by IP address and session ID
+- **Success Reset Mechanism**: Automatic clearing of failure history upon successful authentication
+- **Cooldown Protection**: 60-second intervals between alerts to prevent spam
+- **Intelligent Thresholding**: Detection of 5+ failures within time window triggers alerts
+- **Multi-Dimensional Analysis**: Separate tracking for IP-level and session-level behaviors
 
 ### Adversarial Validation Results (January 12, 2026)
 **Test Summary**: 6 canonical events (3 malicious, 3 benign) tested through complete pipeline
@@ -69,6 +80,7 @@ The Detection Engine is decomposed into 4 isolated modules with strict separatio
 4. **Field Value Extraction**: Added support for both 'value' and 'expected' properties in rules
 5. **SQL Injection Regex Pattern**: Refined pattern to be more specific and reduce false positives
 6. **RuleEngine Operator Normalization**: Added case-insensitive operator handling
+7. **Successful Auth Attempts Extraction**: Added proper field extraction for successful auth attempts
 
 **Updated Test Results**:
 | Event | Type | Expected | Actual | Status |
@@ -110,18 +122,22 @@ The Detection Engine is decomposed into 4 isolated modules with strict separatio
 - Fixed RuleEngine operator compatibility for legacy 'regex' operator
 - Fixed SQL injection regex pattern to reduce false positives
 - Fixed RuleEngine operator normalization to handle case variations
+- Fixed successful auth attempts extraction in EventAdapter
 
 ### Current Status
 - All canonical test events (E1-E6) are processed correctly
 - Detection pipeline is functionally correct for baseline scenarios
 - No known critical bugs in the detection engine
+- Stateful behavioral analysis fully operational
 
 ## NEXT STEPS
 
-### Immediate Actions
-1. **ML Service Integration**: Deploy the Python Isolation Forest model using FastAPI
-2. **Performance Testing**: Validate response times under load
-3. **Additional Test Cases**: Expand test suite beyond canonical events
+### ML Phase (Current Focus)
+1. **Model Training**: Train Isolation Forest model with behavioral data
+2. **Anomaly Detection**: Implement advanced pattern recognition beyond rules
+3. **Confidence Scoring**: Integrate ML confidence adjustments into threat scoring
+4. **Feature Engineering**: Extract advanced behavioral features for ML models
+5. **Performance Tuning**: Optimize ML model response times and accuracy
 
 ### Short-term Roadmap
 1. **Dashboard Development**: Create visualization for detection results
@@ -170,6 +186,6 @@ The Detection Engine is decomposed into 4 isolated modules with strict separatio
 - Minimal overhead for agent instrumentation
 
 ---
-**Last Updated**: february 14, 2026
+**Last Updated**: January 12, 2026
 **Status**: Refactoring Complete, Ready for ML Integration & Testing
 **Handover State**: Ready for continuation by next engineer
